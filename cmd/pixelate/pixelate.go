@@ -33,6 +33,10 @@ func pixelate(src image.Image, name string, n_pixels int) error {
 		return fmt.Errorf("non-square image")
 	}
 
+	if n_pixels == 0 {
+		n_pixels = width
+	}
+
 	g := gift.New(
 		gift.Pixelate(width / n_pixels),
 	)
@@ -70,6 +74,8 @@ func run() error {
 	for i := 0; i < 12; i++ {
 		pixel_config = append(pixel_config, int(math.Pow(1.5, float64(i))))
 	}
+	// Append the original
+	pixel_config = append(pixel_config, 0)
 
 	for _, n_pixels := range pixel_config {
 		if err := pixelate(src, name, n_pixels); err != nil {
