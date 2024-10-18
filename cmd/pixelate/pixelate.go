@@ -31,7 +31,16 @@ func pixelate(src image.Image, name string, n_pixels int) (string, error) {
 	height := src.Bounds().Max.Y
 
 	if width != height {
-		return "", fmt.Errorf("non-square image")
+		// The image is non-square, crop
+		if width > height {
+			width = height
+		}
+		g := gift.New(
+			gift.CropToSize(width, width, gift.CenterAnchor),
+		)
+		dst := image.NewRGBA(g.Bounds(image.Rect(0, 0, width, width)))
+		g.Draw(dst, src)
+		src = dst
 	}
 
 	if n_pixels == 0 {
