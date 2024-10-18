@@ -9,6 +9,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -25,12 +26,12 @@ func readImage(filePath string) (image.Image, error) {
 	return image, err
 }
 
-func pixelate(src image.Image, name string, n_pixels int) error {
+func pixelate(src image.Image, name string, n_pixels int) (string, error) {
 	width := src.Bounds().Max.X
 	height := src.Bounds().Max.Y
 
 	if width != height {
-		return fmt.Errorf("non-square image")
+		return "", fmt.Errorf("non-square image")
 	}
 
 	if n_pixels == 0 {
@@ -46,14 +47,14 @@ func pixelate(src image.Image, name string, n_pixels int) error {
 	filename := fmt.Sprintf("%s_pixelated_%04d.png", name, n_pixels)
 	f, err := os.Create(filename)
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
 	defer f.Close()
 
 	if err := png.Encode(f, dst); err != nil {
-		return fmt.Errorf("encode png: %w", err)
+		return "", fmt.Errorf("encode png: %w", err)
 	}
-	return nil
+	return filename, nil
 }
 
 func run() error {
@@ -71,15 +72,31 @@ func run() error {
 
 	pixel_config := []int{}
 
-	for i := 0; i < 12; i++ {
+	for i := 1; i < 12; i++ {
 		pixel_config = append(pixel_config, int(math.Pow(1.5, float64(i))))
 	}
 	// Append the original
 	pixel_config = append(pixel_config, 0)
 
+	imageFilenames := []string{}
+
 	for _, n_pixels := range pixel_config {
-		if err := pixelate(src, name, n_pixels); err != nil {
+		imageFilename, err := pixelate(src, name, n_pixels)
+		if err != nil {
 			return fmt.Errorf("pixelate: %w", err)
+		}
+		imageFilenames = append(imageFilenames, imageFilename)
+	}
+
+	pdfFilename := fmt.Sprintf("%s_pixelated.pdf", name)
+	cmd := exec.Command("magick", append(imageFilenames, pdfFilename)...)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("run magick command: %w", err)
+	}
+
+	for _, imageFilename := range imageFilenames {
+		if err := os.Remove(imageFilename); err != nil {
+			return err
 		}
 	}
 
